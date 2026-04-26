@@ -1,0 +1,103 @@
+{% extends 'planner/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 fw-bold">
+                Welcome back, {{ user.username }}! 👋
+            </h1>
+            <p class="lead">Here's your study overview</p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <i class="fas fa-book fa-2x mb-2" style="color: #6366f1;"></i>
+                <div class="stat-number">{{ total_subjects }}</div>
+                <h5>Active Subjects</h5>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <i class="fas fa-check-circle fa-2x mb-2" style="color: #6366f1;"></i>
+                <div class="stat-number">{{ completed_sessions }}</div>
+                <h5>Study Sessions</h5>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <i class="fas fa-clock fa-2x mb-2" style="color: #6366f1;"></i>
+                <div class="stat-number">{{ total_study_hours }}</div>
+                <h5>Study Hours</h5>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2" style="color: #6366f1;"></i>
+                        Upcoming Deadlines
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_deadlines %}
+                        {% for subject in upcoming_deadlines %}
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                <div>
+                                    <h5 class="mb-1">{{ subject.name }}</h5>
+                                    <small class="text-muted">Difficulty: {{ subject.get_difficulty_display }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-danger">
+                                        {{ subject.deadline|timeuntil }} left
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-center text-muted">No upcoming deadlines. Add some subjects!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <a href="{% url "add_subject" %}" class="text-decoration-none">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-plus-circle fa-3x mb-3" style="color: #6366f1;"></i>
+                        <h5>Add New Subject</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="{% url "view_schedule" %}" class="text-decoration-none">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-calendar-week fa-3x mb-3" style="color: #6366f1;"></i>
+                        <h5>View Schedule</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="{% url "record_progress" %}" class="text-decoration-none">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-chart-line fa-3x mb-3" style="color: #6366f1;"></i>
+                        <h5>Record Progress</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

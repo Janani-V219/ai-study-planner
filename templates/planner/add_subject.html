@@ -1,0 +1,66 @@
+{% extends 'planner/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-plus-circle me-2" style="color: #6366f1;"></i>
+                        Add New Subject
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Subject Name *</label>
+                            <input type="text" class="form-control" name="name" required placeholder="e.g., Mathematics">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Exam/Deadline Date & Time *</label>
+                            <input type="datetime-local" class="form-control" name="deadline" required id="deadline">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Difficulty Level *</label>
+                            <select class="form-select" name="difficulty" required>
+                                <option value="1">Very Easy</option>
+                                <option value="2">Easy</option>
+                                <option value="3" selected>Medium</option>
+                                <option value="4">Hard</option>
+                                <option value="5">Very Hard</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Total Study Hours Needed *</label>
+                            <input type="number" class="form-control" name="hours_needed" required min="1" max="200">
+                            <div class="form-text">Estimated total hours needed to master this subject</div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-robot me-2"></i>
+                            <strong>AI Tip:</strong> Smart scheduler will prioritize based on deadline and difficulty.
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url "dashboard" %}" class="btn btn-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-gradient">Add Subject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const today = new Date();
+    today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+    document.getElementById('deadline').min = today.toISOString().slice(0, 16);
+</script>
+{% endblock %}

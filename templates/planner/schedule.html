@@ -1,0 +1,328 @@
+{% extends 'planner/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-9">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>
+                        <i class="fas fa-calendar-alt me-2" style="color: #6366f1;"></i>
+                        Smart Study Calendar
+                    </h2>
+                    <div>
+                        <button class="btn btn-outline-primary me-2" onclick="window.location.href='/add-subject/'">
+                                      <i class="fas fa-plus"></i> Add Subject
+                        </button>
+                        <button class="btn btn-primary" onclick="autoReschedule()">
+                            <i class="fas fa-magic"></i> Auto-Reschedule
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="calendar"></div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3">
+            <div class="ai-panel">
+                <h4>
+                    <i class="fas fa-robot me-2"></i>
+                    AI Insights
+                </h4>
+                <div id="ai-recommendations"></div>
+                
+                <div class="mt-4">
+                    <h5>
+                        <i class="fas fa-timer me-2"></i>
+                        Pomodoro Timer
+                    </h5>
+                    <div class="pomodoro-timer">
+                        <div class="timer-display" id="timer-display">25:00</div>
+                        <div class="mt-3">
+                            <select id="current-subject" class="form-select form-select-sm mb-2">
+                                <option value="">Select Subject</option>
+                                {% for subject in subjects %}
+                                    <option value="{{ subject.id }}">{{ subject.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-success" onclick="startPomodoro()">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button class="btn btn-sm btn-warning" onclick="pausePomodoro()">
+                                    <i class="fas fa-pause"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="resetPomodoro()">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 glass-card p-3">
+                    <h5>
+                        <i class="fas fa-fire me-2" style="color: #f59e0b;"></i>
+                        Study Streak
+                    </h5>
+                    <div class="text-center">
+                        <div class="display-4" id="current-streak">0</div>
+                        <small>Current Streak</small>
+                        <div class="mt-2">
+                            <strong>Longest: </strong>
+                            <span id="longest-streak">0</span> days
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FullCalendar CSS & JS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+
+<script>
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Variables for pomodoro timer
+    let timeLeft = 25 * 60;
+    let timerId = null;
+    let isRunning = false;
+
+    // Initialize calendar
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+        
+        if (calendarEl) {
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                editable: true,
+                droppable: true,
+                dragScroll: true,
+                height: 'auto',
+                slotMinTime: '08:00:00',
+                slotMaxTime: '22:00:00',
+                allDaySlot: false,
+                eventDrop: function(info) {
+                    updateScheduleOnServer(info.event);
+                },
+                eventResize: function(info) {
+                    updateScheduleOnServer(info.event);
+                },
+                events: '/api/study-events/',
+                eventDidMount: function(info) {
+                    if (info.event.extendedProps.progress) {
+                        const progressBar = document.createElement('div');
+                        progressBar.className = 'progress-bar-inline';
+                        progressBar.style.position = 'absolute';
+                        progressBar.style.bottom = '0';
+                        progressBar.style.left = '0';
+                        progressBar.style.height = '3px';
+                        progressBar.style.width = '100%';
+                        progressBar.style.background = 'rgba(255, 255, 255, 0.3)';
+                        progressBar.innerHTML = '<div class="progress-fill" style="width: ' + info.event.extendedProps.progress + '%; height: 100%; background: white;"></div>';
+                        info.el.appendChild(progressBar);
+                    }
+                },
+                eventClick: function(info) {
+                    alert('Subject: ' + info.event.title + '\nTime: ' + info.event.start.toLocaleString() + '\nProgress: ' + (info.event.extendedProps.progress || 0) + '%');
+                }
+            });
+            
+            calendar.render();
+        }
+        
+        // Load initial data
+        updateAIRecommendations();
+        updateStreak();
+        
+        // Request notification permission
+        if (Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(updateAIRecommendations, 30000);
+        setInterval(updateStreak, 60000);
+    });
+
+    // Pomodoro Functions
+    function startPomodoro() {
+        if (!isRunning) {
+            const subjectSelect = document.getElementById('current-subject');
+            if (!subjectSelect.value) {
+                alert('Please select a subject first!');
+                return;
+            }
+            isRunning = true;
+            timerId = setInterval(tick, 1000);
+        }
+    }
+    
+    function pausePomodoro() {
+        clearInterval(timerId);
+        isRunning = false;
+    }
+    
+    function resetPomodoro() {
+        pausePomodoro();
+        timeLeft = 25 * 60;
+        updateTimerDisplay();
+    }
+    
+    function tick() {
+        if (timeLeft > 0) {
+            timeLeft--;
+            updateTimerDisplay();
+        } else {
+            completePomodoro();
+        }
+    }
+    
+    function updateTimerDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        const display = document.getElementById('timer-display');
+        if (display) {
+            display.textContent = minutes.toString().padStart(2, '0') + ':' + seconds.toString().padStart(2, '0');
+        }
+    }
+    
+    function completePomodoro() {
+        pausePomodoro();
+        savePomodoroSession();
+        showNotification('Pomodoro Complete!', 'Time for a break! 🎉');
+        resetPomodoro();
+    }
+    
+    function savePomodoroSession() {
+        const subjectId = document.getElementById('current-subject').value;
+        fetch('/api/pomodoro/complete/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                duration: 25,
+                subject_id: subjectId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateStreak();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    function showNotification(title, message) {
+        if (Notification.permission === 'granted') {
+            new Notification(title, { body: message });
+        }
+    }
+
+    // Update AI Recommendations
+    function updateAIRecommendations() {
+        fetch('/api/ai-recommendations/')
+            .then(response => response.json())
+            .then(data => {
+                const panel = document.getElementById('ai-recommendations');
+                if (panel) {
+                    panel.innerHTML = '';
+                    if (data.recommendations && data.recommendations.length > 0) {
+                        data.recommendations.forEach(function(rec) {
+                            let alertClass = 'info';
+                            if (rec.type === 'urgent') alertClass = 'danger';
+                            else if (rec.type === 'warning') alertClass = 'warning';
+                            else if (rec.type === 'tip') alertClass = 'info';
+                            
+                            panel.innerHTML += `
+                                <div class="ai-recommendation alert alert-${alertClass}">
+                                    <strong><i class="fas fa-robot me-2"></i>${rec.title}</strong>
+                                    <p class="mt-2 mb-1">${rec.message}</p>
+                                    <small>💡 ${rec.action}</small>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        panel.innerHTML = '<div class="alert alert-success">🎉 Great job! You\'re on track!</div>';
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Update Streak
+    function updateStreak() {
+        fetch('/api/streak/')
+            .then(response => response.json())
+            .then(data => {
+                const currentStreak = document.getElementById('current-streak');
+                const longestStreak = document.getElementById('longest-streak');
+                if (currentStreak) currentStreak.textContent = data.current_streak;
+                if (longestStreak) longestStreak.textContent = data.longest_streak;
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Auto-reschedule function
+    function autoReschedule() {
+        fetch('/api/auto-reschedule/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // Update schedule on server
+    function updateScheduleOnServer(event) {
+        fetch('/api/update-schedule/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                event_id: event.id,
+                start: event.start,
+                end: event.end
+            })
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
+{% endblock %}

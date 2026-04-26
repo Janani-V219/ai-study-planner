@@ -1,0 +1,86 @@
+{% extends 'planner/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 fw-bold">
+                <i class="fas fa-chart-line me-2" style="color: #6366f1;"></i>
+                Performance Analytics
+            </h1>
+            <p class="lead">Track your learning journey</p>
+        </div>
+    </div>
+    
+    {% if trend_prediction %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert-ai p-4">
+                <i class="fas fa-chart-line fa-2x me-3"></i>
+                <strong>AI Prediction:</strong> {{ trend_prediction }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">Subject Performance Summary</h4>
+                </div>
+                <div class="card-body">
+                    {% if subject_performance %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Quiz Score</th>
+                                        <th>Confidence</th>
+                                        <th>Hours</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for subject, data in subject_performance.items %}
+                                    <tr>
+                                        <td><strong>{{ subject }}</strong></td>
+                                        <td>
+                                            <div class="progress" style="height: 25px;">
+                                                <div class="progress-bar bg-success" style="width: {{ data.avg_score|floatformat:0 }}%">
+                                                    {{ data.avg_score|floatformat:0 }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <td>
+                                            <div class="progress" style="height: 25px;">
+                                                <div class="progress-bar bg-info" style="width: {{ data.avg_confidence|floatformat:0 }}%">
+                                                    {{ data.avg_confidence|floatformat:0 }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <td>{{ data.total_hours|floatformat:1 }} hrs</div>
+                                        <td>
+                                            {% if data.avg_score >= 70 %}
+                                                <span class="badge bg-success">Strong</span>
+                                            {% elif data.avg_score >= 50 %}
+                                                <span class="badge bg-warning">Needs Work</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Critical</span>
+                                            {% endif %}
+                                        </div>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                             </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No data yet. Start recording your progress!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
