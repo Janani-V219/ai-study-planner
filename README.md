@@ -61,6 +61,28 @@ python manage.py runserver
 
 ---
 
+## 📸 Screenshots
+
+### 🏠 Home Page
+![Home](screenshots/home.png)
+
+### 📊 Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+### ➕ Add Subject
+![Add Subject](screenshots/add-subject.png)
+
+### 📈 Progress Tracking
+![Progress](screenshots/progress.png)
+
+### 📊 Analytics
+![Analytics](screenshots/analytics.png)
+
+### 🔐 Authentication
+![Login](screenshots/login.png)
+
+---
+
 ## 👩‍💻 Author
 
 Janani.V
